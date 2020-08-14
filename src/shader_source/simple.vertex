@@ -1,0 +1,14 @@
+#version 330 core
+
+uniform mat4 vp_matrix;
+
+in vec3 a_Position;
+in vec2 a_TexCoords;
+
+out vec2 uv;
+
+void main() {
+    gl_Position = vp_matrix * vec4(a_Position, 1.0);
+
+    uv = a_TexCoords;
+}

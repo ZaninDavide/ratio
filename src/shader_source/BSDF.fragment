@@ -1,0 +1,11 @@
+uniform sampler2D image;
+
+varying in vec2 uv;
+varying in vec3 normal;
+
+varying out vec4 frag_color;
+
+void main() {
+    vec3 col = texture2D(image, uv).xyz;
+    frag_color = vec4(col * dot(vec3(1.0, 0.0, -0.75), normal), 1.0);
+}

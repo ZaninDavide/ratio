@@ -1,0 +1,13 @@
+[package]
+name = "ratio"
+version = "0.1.0"
+authors = ["ZaninDavide <zanindavide02@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+glutin = "0.24.1"
+image = "0.23.8"
+
+[build-dependencies]
+gl_generator = "0.13"
