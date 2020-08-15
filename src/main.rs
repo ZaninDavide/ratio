@@ -79,12 +79,12 @@ fn main() {
         gl,
     );
 
-    let texture = Texture::load_new(
+    let mut texture = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/diffuse.png",
         0,
         gl,
     );
-    let _image = Uniform::new(
+    let mut image = Uniform::new(
         "image",
         UniformType::Texture(texture.get_id()),
         &program,
@@ -157,6 +157,36 @@ fn main() {
                         }
                     }
                     //
+                }
+                // FILE DROPPED
+                WindowEvent::DroppedFile(path_buffer) => {
+                    let path = path_buffer.as_path().to_str();
+                    match path {
+                        Some(file) => {
+                            if file.ends_with(".png")
+                                | file.ends_with(".jpg")
+                                | file.ends_with(".jpeg")
+                                | file.ends_with(".bmp")
+                                | file.ends_with(".tiff")
+                            {
+                                texture.delete(&glwr.gl);
+                                texture = Texture::load_new(file, texture.get_id(), &glwr.gl);
+                                image.set(
+                                    UniformType::Texture(texture.get_id()),
+                                    &program,
+                                    &glwr.gl,
+                                );
+                                windowed_context.window().request_redraw();
+                            } else if file.ends_with(".obj") {
+                                println!("This is an object");
+                            } else {
+                                println!("WARN: this file is not supported.");
+                            }
+                        }
+                        None => {
+                            println!("Error reading path");
+                        }
+                    }
                 }
                 // CLOSE
                 WindowEvent::CloseRequested => {

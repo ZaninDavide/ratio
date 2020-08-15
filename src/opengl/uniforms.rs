@@ -43,7 +43,7 @@ impl Uniform {
                 gl.Uniform1f(location, v);
             },
             UniformType::Float4(v) => unsafe {
-                gl.Uniform4fv(location, 1, &v[0]); // v.as_ptr() as *const GLfloat
+                gl.Uniform4fv(location, 1, &v[0]);
             },
             UniformType::Texture(tex_id) => unsafe {
                 gl.Uniform1i(location, tex_id as i32); // The docs says to use Uniform1i or Uniform1iv.
@@ -89,10 +89,13 @@ impl Uniform {
                 gl.Uniform1f(location, v);
             },
             UniformType::Float4(v) => unsafe {
-                gl.Uniform4fv(location, 1, &v[0]); // v.as_ptr() as *const GLfloat
+                gl.Uniform4fv(location, 1, &v[0]);
+            },
+            UniformType::Texture(tex_id) => unsafe {
+                gl.Uniform1i(location, tex_id as i32);
             },
             UniformType::Mat4x4(v) => unsafe {
-                gl.UniformMatrix4fv(location, 1, gl::FALSE, &v[0]); // v.as_ptr() as *const GLfloat
+                gl.UniformMatrix4fv(location, 1, gl::FALSE, &v[0]);
             },
             _ => {
                 panic!("Uniform::set This uniform type is unknown");
