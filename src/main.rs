@@ -4,9 +4,9 @@ use glutin::window::WindowBuilder;
 use glutin::ContextBuilder;
 
 mod opengl;
-use opengl::buffers::{AttributeType, VertexBuffer, VertexBufferLayout};
+use opengl::buffers::{AttributeType, FrameBuffer, RenderBuffer, VertexBuffer, VertexBufferLayout};
 use opengl::shaders::{Program, Shader};
-use opengl::textures::Texture;
+use opengl::textures::{Texture, TextureColorFormat};
 use opengl::uniforms::{Uniform, UniformType};
 use opengl::Glwrapper;
 
@@ -22,7 +22,7 @@ fn main() {
     // load model
 
     let obj = object::obj::load_new(
-        "D:\\Davide\\Programmazione\\Javascript\\3D Engine - webgl\\OBJs\\sphere.obj",
+        "D:\\Davide\\Programmazione\\Javascript\\3D Engine - webgl\\OBJs\\suzane.obj",
         true,
         true,
     );
@@ -67,7 +67,7 @@ fn main() {
     );
     let program = Program::new(&shader, gl);
     program.bind(gl);
-    shader.delete(gl);
+    // shader.delete(gl);
 
     let mut camera = PerspectiveCamera::new([0.0, 0.0, -5.0]);
     let (vw, vh): (f32, f32) = windowed_context.window().inner_size().into();
@@ -84,6 +84,7 @@ fn main() {
         0,
         gl,
     );
+    texture.bind(gl);
     let mut image = Uniform::new(
         "image",
         UniformType::Texture(texture.get_id()),
@@ -91,7 +92,51 @@ fn main() {
         gl,
     );
 
+    // ----- UNTIL HERE WORKS BELOW IS THE HELL
+
+    // render to texture
+
+    let vb_screen = VertexBuffer::new(
+        &vec![
+            -1.0, -1.0, 0.0, 0.0, -1.0, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, -1.0, -1.0, 0.0, 0.0,
+            1.0, 1.0, 1.0, 1.0, 1.0, -1.0, 1.0, 0.0,
+        ],
+        gl,
+    );
+    // vb_screen.bind(gl);
+    let vbl_screen = VertexBufferLayout::new(
+        vec![
+            (String::from("a_Position"), AttributeType::Float2),
+            (String::from("a_TexCoords"), AttributeType::Float2),
+        ],
+        gl,
+    );
+    // vbl_screen.bind(gl);
+
+    let post_shader = Shader::new(
+        include_str!("shader_source/post.vertex"),
+        include_str!("shader_source/post.fragment"),
+        gl,
+    );
+    let post_program = Program::new(&post_shader, gl);
+    post_program.bind(gl);
+    // post_shader.delete(gl);
+
+    let (vw, vh) = (vw as usize, vh as usize);
+    let fb = FrameBuffer::new(0, vw, vh, gl);
+    fb.bind(gl);
+
+    let rb = RenderBuffer::new(vw, vh, gl);
+    rb.bind(gl);
+
     glwr.print_errors();
+
+    // prepare for render pass
+    vb.bind(&glwr.gl);
+    vbl.bind(&glwr.gl);
+    program.bind(&glwr.gl);
+    fb.bind(&glwr.gl);
+    texture.bind(&glwr.gl);
 
     // event loop
 
@@ -106,9 +151,18 @@ fn main() {
                 WindowEvent::Resized(physical_size) => {
                     windowed_context.resize(physical_size);
                     let (width, height) = physical_size.into();
+
+                    /* UPDATE CAMERA */
                     camera.set_aspect_ratio((width as f32) / (height as f32));
                     vp_matrix.set(UniformType::Mat4x4(camera.matrix()), &program, &glwr.gl);
+
+                    /* UPDATE VIEPORT */
                     glwr.resize(width, height);
+
+                    /* RESIZE THE FRAME BUFFER TEXTURE AND THE RENDER BUFFER */
+                    fb.resize_texture(width as usize, height as usize, &glwr.gl);
+                    texture.bind(&glwr.gl); // back to the right texture
+                    rb.resize(width as usize, height as usize, &glwr.gl);
                 }
                 WindowEvent::MouseWheel {
                     device_id: _,
@@ -199,9 +253,31 @@ fn main() {
                 _ => (),
             },
             Event::RedrawRequested(_) => {
+                // render pass
                 glwr.draw_frame([0.05, 0.05, 0.05, 1.0]);
+                glwr.clear_depth_buffer();
+                glwr.depth_test(true);
                 glwr.draw_triangles(obj.get_vertices_count());
+
+                // post-processing pass
+                vb_screen.bind(&glwr.gl);
+                vbl_screen.bind(&glwr.gl);
+                post_program.bind(&glwr.gl);
+                fb.bind_texture(&glwr.gl);
+                glwr.bind_drawing_buffer();
+
+                glwr.depth_test(false);
+                glwr.draw_triangles(6);
+
+                // to screen
                 windowed_context.swap_buffers().unwrap();
+
+                // prepare for render pass
+                vb.bind(&glwr.gl);
+                vbl.bind(&glwr.gl);
+                program.bind(&glwr.gl);
+                fb.bind(&glwr.gl);
+                texture.bind(&glwr.gl);
             }
             _ => (),
         }

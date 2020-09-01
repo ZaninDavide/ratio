@@ -51,8 +51,7 @@ impl Glwrapper {
     pub fn draw_frame(&self, color: [f32; 4]) {
         unsafe {
             self.gl.ClearColor(color[0], color[1], color[2], color[3]);
-            self.gl.Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT);
-            // self.gl.DrawArrays(gl::TRIANGLES, 0, 3);
+            self.gl.Clear(gl::COLOR_BUFFER_BIT);
         }
     }
 
@@ -90,6 +89,30 @@ impl Glwrapper {
             }
             _ => {
                 println!("ERROR: {}", err);
+            }
+        }
+    }
+
+    pub fn bind_drawing_buffer(&self) {
+        unsafe {
+            self.gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
+    }
+
+    pub fn clear_depth_buffer(&self) {
+        unsafe {
+            self.gl.Clear(gl::DEPTH_BUFFER_BIT);
+        }
+    }
+
+    pub fn depth_test(&self, enable: bool) {
+        if enable {
+            unsafe {
+                self.gl.Enable(gl::DEPTH_TEST);
+            }
+        } else {
+            unsafe {
+                self.gl.Disable(gl::DEPTH_TEST);
             }
         }
     }

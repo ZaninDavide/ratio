@@ -2,6 +2,8 @@ use super::gl;
 use gl::types::{GLenum, GLint, GLsizei, GLsizeiptr, GLuint, GLvoid};
 use std::mem::size_of;
 
+use super::textures::{Texture, TextureColorFormat};
+
 pub struct VertexBuffer {
     id: GLuint,
 }
@@ -17,7 +19,7 @@ impl VertexBuffer {
                 vertices.as_ptr() as *const GLvoid,
                 gl::STATIC_DRAW,
             );
-            gl.BindBuffer(gl::ARRAY_BUFFER, 0);
+            // gl.BindBuffer(gl::ARRAY_BUFFER, 0);
         }
 
         VertexBuffer { id: vbo }
@@ -126,7 +128,6 @@ impl VertexBufferLayout {
                 gl.EnableVertexAttribArray(i as GLuint);
                 offset += attr.1.bytes();
             }
-            // gl.BindVertexArray(vao);
         }
 
         VertexBufferLayout {
@@ -141,7 +142,6 @@ impl VertexBufferLayout {
 
     pub fn bind(&self, gl: &gl::Gl) {
         unsafe {
-            // gl.BindBuffer(gl::ARRAY_BUFFER, self.id);
             gl.BindVertexArray(self.id);
         }
     }
@@ -191,5 +191,155 @@ impl IndexBuffer {
 
     pub fn get_indices_count(&self) -> usize {
         self.indices_count
+    }
+}
+
+pub struct FrameBuffer {
+    id: GLuint,
+    texture: Texture,
+}
+impl FrameBuffer {
+    pub fn new(texture_counter: u32, vw: usize, vh: usize, gl: &gl::Gl) -> FrameBuffer {
+        let mut fbo: GLuint = 0;
+        let texture;
+        unsafe {
+            gl.GenFramebuffers(1, &mut fbo);
+            gl.BindFramebuffer(gl::FRAMEBUFFER, fbo);
+
+            texture = Texture::new(
+                texture_counter,
+                vw as i32,
+                vh as i32,
+                None,
+                TextureColorFormat::RGB,
+                gl,
+            );
+            texture.attach_to_frame_buffer(gl);
+
+            let status = gl.CheckFramebufferStatus(gl::FRAMEBUFFER);
+            match status {
+                gl::FRAMEBUFFER_COMPLETE => {}
+                gl::FRAMEBUFFER_UNDEFINED => {
+                    println!("ERROR: frame buffer GL_FRAMEBUFFER_UNDEFINED");
+                }
+                gl::FRAMEBUFFER_INCOMPLETE_ATTACHMENT => {
+                    println!("ERROR: frame buffer GL_INCOMPLETE_ATTACHMENT");
+                }
+                gl::FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT => {
+                    println!("ERROR: frame buffer GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+                }
+                gl::FRAMEBUFFER_UNSUPPORTED => {
+                    println!("ERROR: frame buffer FRAMEBUFFER_UNSUPPORTED");
+                }
+                _ => {
+                    println!("ERROR: frame buffer: {}", status);
+                }
+            }
+
+            // back to default frame buffer
+            gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
+        FrameBuffer {
+            id: fbo,
+            texture: texture,
+        }
+    }
+
+    pub fn get_id(&self) -> GLuint {
+        self.id
+    }
+
+    pub fn bind(&self, gl: &gl::Gl) {
+        unsafe {
+            gl.BindFramebuffer(gl::FRAMEBUFFER, self.id);
+        }
+    }
+
+    pub fn bind_texture(&self, gl: &gl::Gl) {
+        self.texture.bind(gl);
+    }
+
+    pub fn delete(&self, gl: &gl::Gl) {
+        unsafe {
+            gl.DeleteFramebuffers(1, &self.id);
+        }
+    }
+
+    pub fn resize_texture(&self, width: usize, height: usize, gl: &gl::Gl) {
+        self.texture.resize(width, height, gl);
+    }
+}
+
+pub struct RenderBuffer {
+    id: GLuint,
+}
+impl RenderBuffer {
+    pub fn new(width: usize, height: usize, gl: &gl::Gl) -> RenderBuffer {
+        let mut rbo: GLuint = 0;
+        unsafe {
+            gl.GenRenderbuffers(1, &mut rbo);
+            gl.BindRenderbuffer(gl::RENDERBUFFER, rbo);
+            gl.RenderbufferStorage(
+                gl::RENDERBUFFER,
+                gl::DEPTH24_STENCIL8,
+                width as i32,
+                height as i32,
+            );
+            gl.BindRenderbuffer(gl::RENDERBUFFER, 0);
+
+            gl.FramebufferRenderbuffer(
+                gl::FRAMEBUFFER,
+                gl::DEPTH_STENCIL_ATTACHMENT,
+                gl::RENDERBUFFER,
+                rbo,
+            );
+
+            let status = gl.CheckFramebufferStatus(gl::FRAMEBUFFER);
+            match status {
+                gl::FRAMEBUFFER_COMPLETE => {}
+                gl::FRAMEBUFFER_UNDEFINED => {
+                    println!("ERROR: render buffer GL_FRAMEBUFFER_UNDEFINED");
+                }
+                gl::FRAMEBUFFER_INCOMPLETE_ATTACHMENT => {
+                    println!("ERROR: render buffer GL_INCOMPLETE_ATTACHMENT");
+                }
+                gl::FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT => {
+                    println!("ERROR: render buffer GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT");
+                }
+                gl::FRAMEBUFFER_UNSUPPORTED => {
+                    println!("ERROR: render buffer FRAMEBUFFER_UNSUPPORTED");
+                }
+                _ => {
+                    println!("ERROR: render buffer: {}", status);
+                }
+            }
+
+            // back to default frame buffer
+            gl.BindFramebuffer(gl::FRAMEBUFFER, 0);
+        }
+
+        RenderBuffer { id: rbo }
+    }
+
+    pub fn bind(&self, gl: &gl::Gl) {
+        unsafe {
+            gl.BindRenderbuffer(gl::RENDERBUFFER, self.id);
+        }
+    }
+
+    pub fn get_id(&self) -> GLuint {
+        self.id
+    }
+
+    pub fn resize(&self, width: usize, height: usize, gl: &gl::Gl) {
+        unsafe {
+            gl.BindRenderbuffer(gl::RENDERBUFFER, self.id);
+            gl.RenderbufferStorage(
+                gl::RENDERBUFFER,
+                gl::DEPTH24_STENCIL8,
+                width as i32,
+                height as i32,
+            );
+        }
     }
 }

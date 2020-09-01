@@ -8,49 +8,72 @@ pub enum TextureDataType {
     Float,
     UnsignedByte,
 }
+impl TextureDataType {
+    fn to_gl(&self) -> u32 {
+        match self {
+            TextureDataType::Float => gl::FLOAT,
+            TextureDataType::UnsignedByte => gl::UNSIGNED_BYTE,
+        }
+    }
+}
+
 pub enum TextureColorFormat {
     RGB,
     RGBA,
+    RGBA4,
+}
+impl TextureColorFormat {
+    fn to_gl(&self) -> u32 {
+        match self {
+            TextureColorFormat::RGB => gl::RGB,
+            TextureColorFormat::RGBA => gl::RGBA,
+            TextureColorFormat::RGBA4 => gl::RGBA4,
+        }
+    }
 }
 
 pub struct Texture {
     id: GLuint,
     location: GLuint,
     data_type: TextureDataType,
+    color_format: TextureColorFormat,
 }
 impl Texture {
     pub fn new(
         id_counter: u32,
         width: i32,
         height: i32,
-        data: Vec<f32>,
+        data: Option<Vec<f32>>,
         color_format: TextureColorFormat,
         gl: &gl::Gl,
     ) -> Texture {
+        let (pixels, data_type) = match data {
+            Some(d) => (
+                d.as_ptr() as *const std::ffi::c_void,
+                TextureDataType::Float,
+            ),
+            None => (std::ptr::null(), TextureDataType::UnsignedByte),
+        };
         let mut texture = 0;
         unsafe {
             gl.GenTextures(1, &mut texture);
             gl.ActiveTexture(gl::TEXTURE0 + id_counter);
             gl.BindTexture(gl::TEXTURE_2D, texture);
+
             gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, gl::REPEAT as i32);
             gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::REPEAT as i32);
             gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MIN_FILTER, gl::LINEAR as i32);
             gl.TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_MAG_FILTER, gl::LINEAR as i32);
-            let color_format = match color_format {
-                TextureColorFormat::RGB => gl::RGB,
-                TextureColorFormat::RGBA => gl::RGBA,
-            };
-            let data = [data];
             gl.TexImage2D(
                 gl::TEXTURE_2D,
                 0,
-                color_format as i32,
+                color_format.to_gl() as i32,
                 width,
                 height,
                 0,
-                color_format,
-                gl::FLOAT,
-                data.as_ptr() as *const std::ffi::c_void,
+                color_format.to_gl(),
+                data_type.to_gl(),
+                pixels,
             );
             gl.GenerateMipmap(gl::TEXTURE_2D);
         }
@@ -58,7 +81,8 @@ impl Texture {
         return Texture {
             id: id_counter,
             location: texture,
-            data_type: TextureDataType::Float,
+            data_type: data_type,
+            color_format: color_format,
         };
     }
 
@@ -94,6 +118,7 @@ impl Texture {
             id: id_counter,
             location: texture,
             data_type: TextureDataType::UnsignedByte,
+            color_format: TextureColorFormat::RGB,
         };
     }
 
@@ -108,12 +133,46 @@ impl Texture {
         self.id
     }
 
+    pub fn get_location(&self) -> u32 {
+        self.location
+    }
+
     pub fn delete(&self, gl: &gl::Gl) {
         // should be implemented in a drop fuction
         // the problem with that is that Texture should store a copy of gl
         // in that case we should specify lifetimes
         unsafe {
-            gl.DeleteTextures(1, &self.id);
+            gl.DeleteTextures(1, &self.location);
+        }
+    }
+
+    pub fn attach_to_frame_buffer(&self, gl: &gl::Gl) {
+        unsafe {
+            self.bind(gl);
+            gl.FramebufferTexture2D(
+                gl::FRAMEBUFFER,
+                gl::COLOR_ATTACHMENT0,
+                gl::TEXTURE_2D,
+                self.location,
+                0,
+            );
+        }
+    }
+
+    pub fn resize(&self, width: usize, height: usize, gl: &gl::Gl) {
+        self.bind(gl);
+        unsafe {
+            gl.TexImage2D(
+                gl::TEXTURE_2D,
+                0,
+                self.color_format.to_gl() as i32,
+                width as GLsizei,
+                height as GLsizei,
+                0,
+                self.color_format.to_gl(),
+                self.data_type.to_gl(),
+                std::ptr::null(),
+            );
         }
     }
 }
