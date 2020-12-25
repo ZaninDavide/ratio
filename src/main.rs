@@ -6,7 +6,7 @@ use glutin::ContextBuilder;
 mod opengl;
 use opengl::buffers::{AttributeType, FrameBuffer, RenderBuffer, VertexBuffer, VertexBufferLayout};
 use opengl::shaders::{Program, Shader};
-use opengl::textures::{Texture, TextureColorFormat};
+use opengl::textures::{Texture, TextureDataType};
 use opengl::uniforms::{Uniform, UniformType};
 use opengl::Glwrapper;
 
@@ -23,6 +23,7 @@ fn main() {
 
     let obj = object::obj::load_new(
         "D:\\Davide\\Programmazione\\Javascript\\3D Engine - webgl\\OBJs\\suzane.obj",
+        true,
         true,
         true,
     );
@@ -53,6 +54,8 @@ fn main() {
             (String::from("a_Position"), AttributeType::Float3),
             (String::from("a_TexCoords"), AttributeType::Float2),
             (String::from("a_Normal"), AttributeType::Float3),
+            (String::from("a_Tangent"), AttributeType::Float3),
+            (String::from("a_Bitangent"), AttributeType::Float3),
         ],
         gl,
     );
@@ -80,7 +83,7 @@ fn main() {
     );
 
     let mut texture = Texture::load_new(
-        "D:/Davide/Programmazione/Rust/ratio/src/image_source/diffuse.png",
+        "D:/Davide/Programmazione/Rust/ratio/src/image_source/diffuse.jpg",
         0,
         gl,
     );
@@ -88,6 +91,19 @@ fn main() {
     let mut image = Uniform::new(
         "image",
         UniformType::Texture(texture.get_id()),
+        &program,
+        gl,
+    );
+
+    let mut texture_normal = Texture::load_new(
+        "D:/Davide/Programmazione/Rust/ratio/src/image_source/normal.jpg",
+        1,
+        gl,
+    );
+    texture_normal.bind(gl);
+    let mut image = Uniform::new(
+        "normal_map",
+        UniformType::Texture(texture_normal.get_id()),
         &program,
         gl,
     );
@@ -103,7 +119,6 @@ fn main() {
         ],
         gl,
     );
-    // vb_screen.bind(gl);
     let vbl_screen = VertexBufferLayout::new(
         vec![
             (String::from("a_Position"), AttributeType::Float2),
@@ -111,7 +126,6 @@ fn main() {
         ],
         gl,
     );
-    // vbl_screen.bind(gl);
 
     let post_shader = Shader::new(
         include_str!("shader_source/post.vertex"),
@@ -123,7 +137,7 @@ fn main() {
     // post_shader.delete(gl);
 
     let (vw, vh) = (vw as usize, vh as usize);
-    let fb = FrameBuffer::new(0, vw, vh, gl);
+    let fb = FrameBuffer::new(0, vw, vh, TextureDataType::UnsignedByte, gl);
     fb.bind(gl);
 
     let rb = RenderBuffer::new(vw, vh, gl);

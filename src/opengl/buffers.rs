@@ -2,7 +2,7 @@ use super::gl;
 use gl::types::{GLenum, GLint, GLsizei, GLsizeiptr, GLuint, GLvoid};
 use std::mem::size_of;
 
-use super::textures::{Texture, TextureColorFormat};
+use super::textures::{Texture, TextureColorFormat, TextureDataType};
 
 pub struct VertexBuffer {
     id: GLuint,
@@ -199,7 +199,13 @@ pub struct FrameBuffer {
     texture: Texture,
 }
 impl FrameBuffer {
-    pub fn new(texture_counter: u32, vw: usize, vh: usize, gl: &gl::Gl) -> FrameBuffer {
+    pub fn new(
+        texture_counter: u32,
+        vw: usize,
+        vh: usize,
+        data_type: TextureDataType,
+        gl: &gl::Gl,
+    ) -> FrameBuffer {
         let mut fbo: GLuint = 0;
         let texture;
         unsafe {
@@ -212,6 +218,7 @@ impl FrameBuffer {
                 vh as i32,
                 None,
                 TextureColorFormat::RGB,
+                data_type,
                 gl,
             );
             texture.attach_to_frame_buffer(gl);

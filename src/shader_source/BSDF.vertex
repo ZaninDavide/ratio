@@ -3,13 +3,22 @@ uniform mat4 vp_matrix;
 attribute in vec3 a_Position;
 attribute in vec2 a_TexCoords;
 attribute in vec3 a_Normal;
+attribute in vec3 a_Tangent;
+attribute in vec3 a_Bitangent;
 
 varying out vec2 uv;
 varying out vec3 normal;
+varying out mat3 TBN;
+
 
 void main() {    
     gl_Position = vp_matrix * vec4(a_Position, 1.0);
 
     uv = a_TexCoords;
-    normal = normalize(a_Normal);
+    normal = a_Normal;
+
+    vec3 T = normalize(vec3(vp_matrix * vec4(a_Tangent,   0.0)));
+    vec3 B = normalize(vec3(vp_matrix * vec4(a_Bitangent, 0.0)));
+    vec3 N = normalize(vec3(vp_matrix * vec4(a_Normal,    0.0)));
+    TBN = mat3(T, B, N);
 }

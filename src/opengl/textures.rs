@@ -45,14 +45,12 @@ impl Texture {
         height: i32,
         data: Option<Vec<f32>>,
         color_format: TextureColorFormat,
+        data_type: TextureDataType,
         gl: &gl::Gl,
     ) -> Texture {
-        let (pixels, data_type) = match data {
-            Some(d) => (
-                d.as_ptr() as *const std::ffi::c_void,
-                TextureDataType::Float,
-            ),
-            None => (std::ptr::null(), TextureDataType::UnsignedByte),
+        let pixels = match data {
+            Some(d) => d.as_ptr() as *const std::ffi::c_void,
+            None => std::ptr::null(),
         };
         let mut texture = 0;
         unsafe {
