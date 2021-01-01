@@ -21,7 +21,7 @@ mod object;
 fn main() {
     // load model
 
-    let obj = object::obj::load_new(
+    let mut obj = object::obj::load_new(
         "D:\\Davide\\Programmazione\\Javascript\\3D Engine - webgl\\OBJs\\suzane.obj",
         true,
         true,
@@ -82,33 +82,59 @@ fn main() {
         gl,
     );
 
-    let mut texture = Texture::load_new(
+    let mut texture_diffuse = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/diffuse.jpg",
         0,
         gl,
     );
-    texture.bind(gl);
-    let mut image = Uniform::new(
-        "image",
-        UniformType::Texture(texture.get_id()),
+    texture_diffuse.bind(gl);
+    let mut uniform_diffuse = Uniform::new(
+        "diffuse_map",
+        UniformType::Texture(texture_diffuse.get_id()),
         &program,
         gl,
     );
 
-    let mut texture_normal = Texture::load_new(
+    let texture_normal = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/normal.jpg",
         1,
         gl,
     );
     texture_normal.bind(gl);
-    let mut image = Uniform::new(
+    let _uniform_normal = Uniform::new(
         "normal_map",
         UniformType::Texture(texture_normal.get_id()),
         &program,
         gl,
     );
 
-    // ----- UNTIL HERE WORKS BELOW IS THE HELL
+    let texture_spec = Texture::load_new(
+        "D:/Davide/Programmazione/Rust/ratio/src/image_source/specularity.jpg",
+        2,
+        gl,
+    );
+    texture_spec.bind(gl);
+    let _uniform_spec = Uniform::new(
+        "specularity_map",
+        UniformType::Texture(texture_spec.get_id()),
+        &program,
+        gl,
+    );
+
+    let texture_hdri = Texture::load_new(
+        "D:/Davide/Programmazione/Rust/ratio/src/image_source/env.hdr",
+        3,
+        gl,
+    );
+    texture_hdri.bind(gl);
+    let _uniform_hdri = Uniform::new(
+        "hdri",
+        UniformType::Texture(texture_hdri.get_id()),
+        &program,
+        gl,
+    );
+
+    println!("DEBUG: Textures loaded");
 
     // render to texture
 
@@ -150,7 +176,8 @@ fn main() {
     vbl.bind(&glwr.gl);
     program.bind(&glwr.gl);
     fb.bind(&glwr.gl);
-    texture.bind(&glwr.gl);
+    texture_diffuse.bind(&glwr.gl);
+    texture_normal.bind(&glwr.gl);
 
     // event loop
 
@@ -175,7 +202,7 @@ fn main() {
 
                     /* RESIZE THE FRAME BUFFER TEXTURE AND THE RENDER BUFFER */
                     fb.resize_texture(width as usize, height as usize, &glwr.gl);
-                    texture.bind(&glwr.gl); // back to the right texture
+                    texture_diffuse.bind(&glwr.gl); // back to the right texture
                     rb.resize(width as usize, height as usize, &glwr.gl);
                 }
                 WindowEvent::MouseWheel {
@@ -237,18 +264,21 @@ fn main() {
                                 | file.ends_with(".bmp")
                                 | file.ends_with(".tiff")
                             {
-                                texture.delete(&glwr.gl);
-                                texture = Texture::load_new(file, texture.get_id(), &glwr.gl);
-                                image.set(
-                                    UniformType::Texture(texture.get_id()),
+                                texture_diffuse.delete(&glwr.gl);
+                                texture_diffuse = Texture::load_new(file, texture_diffuse.get_id(), &glwr.gl);
+                                uniform_diffuse.set(
+                                    UniformType::Texture(texture_diffuse.get_id()),
                                     &program,
                                     &glwr.gl,
                                 );
                                 windowed_context.window().request_redraw();
                             } else if file.ends_with(".obj") {
-                                println!("This is an object");
+                                println!("OBJ: {}", file);
+                                obj = object::obj::load_new(file, true, true, true);
+                                vb.update_data(obj.get_vertices(), &glwr.gl);
+                                windowed_context.window().request_redraw();
                             } else {
-                                println!("WARN: this file is not supported.");
+                                println!("WARN: this file is not supported. '{}'", file);                                
                             }
                         }
                         None => {
@@ -291,7 +321,8 @@ fn main() {
                 vbl.bind(&glwr.gl);
                 program.bind(&glwr.gl);
                 fb.bind(&glwr.gl);
-                texture.bind(&glwr.gl);
+                texture_diffuse.bind(&glwr.gl);
+                texture_normal.bind(&glwr.gl);
             }
             _ => (),
         }

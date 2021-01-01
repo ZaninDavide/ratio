@@ -1,26 +1,33 @@
-uniform sampler2D image;
+uniform sampler2D diffuse_map;
 uniform sampler2D normal_map;
+uniform sampler2D specularity_map;
+uniform sampler2D hdri;
+
+uniform mat4 vp_matrix;
 
 varying in vec2 uv;
-varying in vec3 normal;
+varying in vec3 pos;
 varying in mat3 TBN;
 
 varying out vec4 frag_color;
 
 const vec3 lightDir = vec3(-1.0, 0.0, -0.75);
 const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-const float specularity = 1.0;
-const vec3 ambient = vec3(0.05, 0.05, 0.05);
+
+const float PI = 3.141592653589793;
 
 void main() {
-    vec3 baseColor = texture2D(image, uv).xyz;
+    vec3 baseColor = texture2D(diffuse_map, uv).xyz;
+
+    vec3 spec_sample = texture2D(specularity_map, uv).xyz;
+    float specularity = (spec_sample.x + spec_sample.y + spec_sample.z) / 3.;
 
     vec3 total_normal = texture2D(normal_map, uv).xyz;
     total_normal = total_normal * 2.0 - 1.0;   
     total_normal = normalize(TBN * total_normal); 
     
     // diffuse
-    float diff = max(dot(lightDir, total_normal), 0.0);
+    float diff = max(dot(lightDir, total_normal) + 0.06, 0.0);
     vec3 diffuse = diff * baseColor;
 
     // specular = reflection
@@ -30,11 +37,27 @@ void main() {
     vec3 halfwayDir = normalize(lightDir + viewDir);  
     float spec = pow(max(dot(total_normal, halfwayDir), 0.0), specularity * 1000.);
     
+
+    // https://en.wikipedia.org/wiki/Equirectangular_projection
+    // https://stackoverflow.com/questions/5674149/3d-coordinates-on-a-sphere-to-latitude-and-longitude
+    // http://www.simonrajotte.com/wp-content/uploads/2018/07/equirectangular_ISS.png
+
+    vec3 reflectedEye = normalize(reflect(normalize(pos), total_normal));
+
+    float lat = acos(reflectedEye.y); // theta
+    float lon = atan(reflectedEye.x / reflectedEye.z); // phi
+
+    vec2 hdri_uv = vec2(lon, lat) / PI;
+
+    float gamma = 2.2;
+    vec3 hdr_color = texture2D(hdri, hdri_uv).xyz;
+    vec3 reflection = hdr_color / (hdr_color + vec3(1.0));
+    reflection = pow(reflection, vec3(1.0 / gamma))*(spec+0.06);
+
     vec3 specular = vec3(0.3) * spec;
-    frag_color = vec4(atan(ambient + diffuse*lightColor + specular), 1.0);
 
-    // frag_color = vec4(total_normal, 1.0);
+    frag_color = vec4(atan(diffuse*lightColor + specular + reflection), 1.0);
 
-    // frag_color = vec4(total_normal, 1.0);
-    // frag_color = vec4(texture2D(normal_map, uv).xyz, 1.0);
+    // mirror
+    // frag_color = vec4(reflection/(spec+0.06), 1.0);
 }

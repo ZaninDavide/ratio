@@ -34,11 +34,23 @@ impl VertexBuffer {
             gl.BindBuffer(gl::ARRAY_BUFFER, self.id);
         }
     }
+
     pub fn delete(&self, gl: &gl::Gl) {
         unsafe {
             gl.DeleteBuffers(1, &self.id);
         }
     }
+
+    /// https://stackoverflow.com/questions/15821969/what-is-the-proper-way-to-modify-opengl-vertex-buffer
+    pub fn update_data(&self, vertices: &Vec<f32>, gl: &gl::Gl){ unsafe {
+        gl.BindBuffer(gl::ARRAY_BUFFER, self.id);
+        gl.BufferData(
+            gl::ARRAY_BUFFER,
+            (vertices.len() * size_of::<f32>()) as GLsizeiptr,
+            vertices.as_ptr() as *const GLvoid,
+            gl::STATIC_DRAW,
+        );
+    }}
 }
 
 pub enum AttributeType {
