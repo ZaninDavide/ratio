@@ -1,3 +1,5 @@
+#version 120
+
 uniform sampler2D diffuse_map;
 uniform sampler2D normal_map;
 uniform sampler2D specularity_map;
@@ -16,6 +18,51 @@ const vec3 lightColor = vec3(1.0, 1.0, 1.0);
 
 const float PI = 3.141592653589793;
 
+vec2 get_hdri_uv(vec3 normal){
+    float lat = acos(normal.y); // theta
+    float lon = atan(normal.x / normal.z); // phi
+
+    return vec2(lon, lat) / PI;
+}
+
+vec2 get_hdri_uv(vec3 point, vec3 normal) {
+    vec3 reflectedEye = normalize(reflect(normalize(point), normal));
+
+    float lat = acos(reflectedEye.y); // theta
+    float lon = atan(reflectedEye.x / reflectedEye.z); // phi
+
+    return vec2(lon, lat) / PI;
+}
+
+vec3 gamma_correct(vec3 color, float gamma) {
+    vec3 new_color = color / (color + vec3(1.0));
+    return pow(new_color, vec3(1.0 / gamma));
+}
+
+float rand2d(vec2 point) {
+    return (fract(sin(dot(point.xy, vec2(12.9898, 78.233))) * 43758.5453)) * 1;
+}
+
+vec3 multiple_hdri_sampling(vec2 center_uv, float radius, int rotations, int steps, float randomizer) {
+    // more rotations and more steps -> more quality
+    // bigger radius -> more blurred
+
+    vec3 acc = texture2D(hdri, center_uv).xyz;
+
+    float step_angle = 2.*PI/rotations;
+    float random_angle = 2.*PI*rand2d(vec2(center_uv + vec2(randomizer)));
+
+    for(int i = 0; i<rotations; i++){
+        for(int j = 1; j<=steps; j++){
+            float angle = (i + 0.5*(mod(steps, 2)))*step_angle + random_angle; // 0.5*j/steps
+            vec2 uv = center_uv + vec2(cos(angle), sin(angle))*j*radius/steps;
+            acc += texture2D(hdri, uv).xyz;
+        }
+    }
+
+    return acc / float(rotations * steps + 1);
+}
+
 void main() {
     vec3 baseColor = texture2D(diffuse_map, uv).xyz;
 
@@ -27,7 +74,9 @@ void main() {
     total_normal = normalize(TBN * total_normal); 
     
     // diffuse
-    float diff = max(dot(lightDir, total_normal) + 0.06, 0.0);
+    vec3 diff_light = max(dot(lightDir, total_normal) + 0.06, 0.0) * lightColor;
+    vec3 diff = multiple_hdri_sampling(get_hdri_uv(total_normal), 0.5, 5, 5, pos.x);
+    diff = gamma_correct(diff, 2.2) + diff_light;
     vec3 diffuse = diff * baseColor;
 
     // specular = reflection
@@ -42,22 +91,15 @@ void main() {
     // https://stackoverflow.com/questions/5674149/3d-coordinates-on-a-sphere-to-latitude-and-longitude
     // http://www.simonrajotte.com/wp-content/uploads/2018/07/equirectangular_ISS.png
 
-    vec3 reflectedEye = normalize(reflect(normalize(pos), total_normal));
+    float blur_radius = sqrt(1. - specularity) * 0.1;
+    vec3 hdr_color = multiple_hdri_sampling(get_hdri_uv(pos, total_normal), blur_radius, 5, 5, pos.x);
 
-    float lat = acos(reflectedEye.y); // theta
-    float lon = atan(reflectedEye.x / reflectedEye.z); // phi
-
-    vec2 hdri_uv = vec2(lon, lat) / PI;
-
-    float gamma = 2.2;
-    vec3 hdr_color = texture2D(hdri, hdri_uv).xyz;
-    vec3 reflection = hdr_color / (hdr_color + vec3(1.0));
-    reflection = pow(reflection, vec3(1.0 / gamma))*(spec+0.06);
+    vec3 reflection = gamma_correct(hdr_color, 2.2);
 
     vec3 specular = vec3(0.3) * spec;
 
-    frag_color = vec4(atan(diffuse*lightColor + specular + reflection), 1.0);
+    frag_color = vec4(atan(diffuse + specular + reflection*(spec + 0.06)), 1.0);
 
     // mirror
-    // frag_color = vec4(reflection/(spec+0.06), 1.0);
+    // frag_color = vec4(reflection, 1.0);
 }

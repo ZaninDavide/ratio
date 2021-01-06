@@ -14,7 +14,7 @@ varying out mat3 TBN;
 void main() {   
     gl_Position = vp_matrix * vec4(a_Position, 1.0);
 
-    pos = vp_matrix * vec4(a_Position, 1.0);
+    pos = (vp_matrix * vec4(a_Position, 1.0)).xyz;
 
     uv = a_TexCoords;
 

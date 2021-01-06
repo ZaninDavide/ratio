@@ -22,7 +22,7 @@ fn main() {
     // load model
 
     let mut obj = object::obj::load_new(
-        "D:\\Davide\\Programmazione\\Javascript\\3D Engine - webgl\\OBJs\\suzane.obj",
+        "D:/Davide/Programmazione/Rust/ratio/src/image_source/suzanne.obj",
         true,
         true,
         true,
