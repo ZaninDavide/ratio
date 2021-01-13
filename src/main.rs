@@ -95,39 +95,39 @@ fn main() {
         gl,
     );
 
-    let texture_normal = Texture::load_new(
+    let mut texture_normal = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/normal.jpg",
         1,
         gl,
     );
     texture_normal.bind(gl);
-    let _uniform_normal = Uniform::new(
+    let mut uniform_normal = Uniform::new(
         "normal_map",
         UniformType::Texture(texture_normal.get_id()),
         &program,
         gl,
     );
 
-    let texture_spec = Texture::load_new(
+    let mut texture_spec = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/specularity.jpg",
         2,
         gl,
     );
     texture_spec.bind(gl);
-    let _uniform_spec = Uniform::new(
+    let mut uniform_spec = Uniform::new(
         "specularity_map",
         UniformType::Texture(texture_spec.get_id()),
         &program,
         gl,
     );
 
-    let texture_hdri = Texture::load_new(
+    let mut texture_hdri = Texture::load_new(
         "D:/Davide/Programmazione/Rust/ratio/src/image_source/env.hdr",
         3,
         gl,
     );
     texture_hdri.bind(gl);
-    let _uniform_hdri = Uniform::new(
+    let mut uniform_hdri = Uniform::new(
         "hdri",
         UniformType::Texture(texture_hdri.get_id()),
         &program,
@@ -263,14 +263,25 @@ fn main() {
                                 | file.ends_with(".jpeg")
                                 | file.ends_with(".bmp")
                                 | file.ends_with(".tiff")
+                                | file.ends_with(".hdr")
                             {
-                                texture_diffuse.delete(&glwr.gl);
-                                texture_diffuse = Texture::load_new(file, texture_diffuse.get_id(), &glwr.gl);
-                                uniform_diffuse.set(
-                                    UniformType::Texture(texture_diffuse.get_id()),
-                                    &program,
-                                    &glwr.gl,
-                                );
+                                let lower_file = file.to_lowercase();
+                                if lower_file.contains("norm") || lower_file.contains("nrm") {
+                                    println!("NORMAL MAP: {}", file);
+                                    glwr.change_texture(&mut texture_normal, &mut uniform_normal, file, &program);
+
+                                }else if lower_file.contains("spec") {
+                                    println!("SPECULARITY MAP: {}", file);
+                                    glwr.change_texture(&mut texture_spec, &mut uniform_spec, file, &program);
+
+                                }else if lower_file.contains("hdr") || lower_file.contains("env") || lower_file.contains("ambient") {
+                                    println!("ENVIRONMENT MAP: {}", file);
+                                    glwr.change_texture(&mut texture_hdri, &mut uniform_hdri, file, &program);
+
+                                }else{
+                                    println!("DIFFUSE MAP: {}", file);
+                                    glwr.change_texture(&mut texture_diffuse, &mut uniform_diffuse, file, &program);
+                                }
                                 windowed_context.window().request_redraw();
                             } else if file.ends_with(".obj") {
                                 println!("OBJ: {}", file);

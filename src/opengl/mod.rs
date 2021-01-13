@@ -12,6 +12,11 @@ use glutin::{self, PossiblyCurrent};
 use gl::types::{GLint, GLsizei};
 use std::ffi::CStr;
 
+use textures::Texture;
+use uniforms::Uniform;
+use uniforms::UniformType;
+use shaders::Program;
+
 /// Glwrapper safely provides all the necessary functions to communicate with openGl
 /// ```
 /// let gl = openGl::Glwrapper::new(&windowed_context.context());
@@ -115,6 +120,16 @@ impl Glwrapper {
                 self.gl.Disable(gl::DEPTH_TEST);
             }
         }
+    }
+
+    pub fn change_texture(&self, texture: &mut Texture, texture_uniform: &mut Uniform, path: &str, program: &Program) {
+        texture.delete(&self.gl);
+        *texture = Texture::load_new(path, texture.get_id(), &self.gl);
+        texture_uniform.set(
+            UniformType::Texture(texture.get_id()),
+            &program,
+            &self.gl,
+        );
     }
 }
 
